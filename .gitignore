@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+
+# Font dosyaları (büyük)
+*.ttf
+*.woff2
+
+# Geçici dosyalar
+*.xlsx
+*.xls
+*.csv
+!requirements.txt
+
+# Ortam
+.env
+venv/
+myenv*/
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store

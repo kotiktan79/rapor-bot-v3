@@ -1,0 +1,75 @@
+name: Ulaşım Rapor Botu
+
+on:
+  # Zamanlanmış çalıştırma (UTC saatleri — Türkiye = UTC+3)
+  schedule:
+    - cron: '0 5 * * *'    # Her gün 08:00 TR (05:00 UTC)
+    - cron: '0 15 * * *'   # Her gün 18:00 TR (15:00 UTC)
+
+  # Manuel tetikleme (GitHub arayüzünden "Run workflow" butonu)
+  workflow_dispatch:
+
+# Aynı anda birden fazla çalışmasın
+concurrency:
+  group: rapor-bot
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # DB dosyasını commit edebilmek için
+
+jobs:
+  rapor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # 1. Kodu çek
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Python kur
+      - name: Python kurulumu
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      # 3. Bağımlılıkları yükle
+      - name: Bağımlılıkları yükle
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 4. Font dosyalarını indir (Türkçe PDF desteği)
+      - name: Fontları indir
+        run: python font_kur.py
+
+      # 5. Rapor botunu çalıştır
+      - name: Rapor botu çalıştır
+        env:
+          GMAIL_USER:     ${{ secrets.GMAIL_USER }}
+          GMAIL_PASS:     ${{ secrets.GMAIL_PASS }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT:  ${{ secrets.TELEGRAM_CHAT }}
+        run: |
+          python rapor_bot_v2.py
+        continue-on-error: true
+
+      # 6. Veritabanı ve geçmiş dosyalarını commit et (veri kaybını önle)
+      - name: Veri dosyalarını kaydet
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # DB ve JSON dosyalarını ekle
+          git add -f rapor_bot.db gecmis_veriler.json firma_gecmis.json 2>/dev/null || true
+          git add -f zamanlayici_config.json 2>/dev/null || true
+
+          # Değişiklik varsa commit et
+          if git diff --cached --quiet; then
+            echo "Veri değişikliği yok, commit atlanıyor."
+          else
+            git commit -m "📊 Veri güncelleme — $(date +'%Y-%m-%d %H:%M')"
+            git push
+            echo "✅ Veri dosyaları commit edildi."
+          fi

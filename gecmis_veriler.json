@@ -1,0 +1,26 @@
+{
+  "2026-03-16": {
+    "arac": 64,
+    "kapasite": 3228,
+    "yolcu": 3047,
+    "doluluk": 94.4
+  },
+  "2026-03-17": {
+    "arac": 66,
+    "kapasite": 3280,
+    "yolcu": 3057,
+    "doluluk": 93.2
+  },
+  "2026-03-19": {
+    "arac": 15,
+    "kapasite": 619,
+    "yolcu": 520,
+    "doluluk": 84.0
+  },
+  "2026-03-20": {
+    "arac": 7,
+    "kapasite": 300,
+    "yolcu": 223,
+    "doluluk": 74.3
+  }
+}
