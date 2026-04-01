@@ -143,14 +143,16 @@ def _fontlari_kaydet():
                 print(f"  ⚠ Font kayıt hatası ({isim}): {e}")
 
         from reportlab.pdfbase.pdfmetrics import registerFontFamily
+        bold_isim   = "DejaVuSans-Bold"   if "DejaVuSans-Bold"   in bulunanlar else "DejaVuSans"
+        italic_isim = "DejaVuSans-Oblique" if "DejaVuSans-Oblique" in bulunanlar else "DejaVuSans"
         registerFontFamily(
             "DejaVuSans",
             normal="DejaVuSans",
-            bold=bulunanlar.get("DejaVuSans-Bold", "DejaVuSans"),
-            italic=bulunanlar.get("DejaVuSans-Oblique", "DejaVuSans"),
-            boldItalic=bulunanlar.get("DejaVuSans-Bold", "DejaVuSans"),
+            bold=bold_isim,
+            italic=italic_isim,
+            boldItalic=bold_isim,
         )
-        return "DejaVuSans", bulunanlar.get("DejaVuSans-Bold", "DejaVuSans")
+        return "DejaVuSans", bold_isim
     else:
         print("⚠ DejaVu fontları bulunamadı. Türkçe/Rusça karakterler bozuk çıkabilir.")
         print("  Düzeltmek için:  python3 font_kur.py")
