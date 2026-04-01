@@ -369,10 +369,9 @@ def db_json_migration():
                 log.warning(f"JSON migration hatası (firma): {e}")
 
 
-# DB başlat
+# DB başlat (tablolar hemen oluşturulur, migration ana fonksiyonda çalışır)
 db_tablolari_olustur()
-if os.path.exists(GECMIS_DOSYA) or os.path.exists(FIRMA_GECMIS_DOSYA):
-    db_json_migration()
+_DB_MIGRATION_YAPILDI = False
 
 
 # ═══════════════════════════════════════════════
@@ -3256,6 +3255,12 @@ def verileri_isle(dosyalar: list, dun_ali: str, dun_ruslan: str):
 
 def _rapor_ic_surec():
     """Asıl rapor süreci — retry_ile_calistir ile sarılır."""
+    global _DB_MIGRATION_YAPILDI
+    if not _DB_MIGRATION_YAPILDI:
+        if os.path.exists(GECMIS_DOSYA) or os.path.exists(FIRMA_GECMIS_DOSYA):
+            db_json_migration()
+        _DB_MIGRATION_YAPILDI = True
+
     log.info("=" * 55)
     log.info("🚀 RAPOR SÜRECİ BAŞLADI")
     log.info("=" * 55)

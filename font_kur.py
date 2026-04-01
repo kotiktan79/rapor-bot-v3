@@ -38,9 +38,9 @@ def mac_fontu_kopyala():
 
 def url_ile_indir():
     urls = {
-        "DejaVuSans.ttf":         "https://github.com/web-fonts/dejavu-sans/raw/master/fonts/DejaVuSans.ttf",
-        "DejaVuSans-Bold.ttf":    "https://github.com/web-fonts/dejavu-sans/raw/master/fonts/DejaVuSans-Bold.ttf",
-        "DejaVuSans-Oblique.ttf": "https://github.com/web-fonts/dejavu-sans/raw/master/fonts/DejaVuSans-Oblique.ttf",
+        "DejaVuSans.ttf":         "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans.ttf",
+        "DejaVuSans-Bold.ttf":    "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Bold.ttf",
+        "DejaVuSans-Oblique.ttf": "https://github.com/dejavu-fonts/dejavu-fonts/raw/master/ttf/DejaVuSans-Oblique.ttf",
     }
     basari = 0
     for dosya, url in urls.items():
