@@ -40,9 +40,13 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      # 4. Font dosyalarını indir (Türkçe PDF desteği)
-      - name: Fontları indir
-        run: python font_kur.py
+      # 4. Türkçe/Rusça font desteği (DejaVu)
+      - name: Sistem fontlarını kur
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-dejavu-core fonts-dejavu-extra
+          fc-list | grep -i dejavu | head -5 || true
+          echo "✅ DejaVu fontları kuruldu"
 
       # 5. Rapor botunu çalıştır
       - name: Rapor botu çalıştır

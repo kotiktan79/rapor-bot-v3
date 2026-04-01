@@ -52,6 +52,18 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.gridspec import GridSpec
 
+# Matplotlib için DejaVu fontunu ayarla (Türkçe/Rusça karakter desteği)
+_MPL_FONT_SET = False
+for _mpl_font in ["DejaVu Sans", "Liberation Sans", "FreeSans", "Arial"]:
+    try:
+        matplotlib.rcParams["font.family"] = "sans-serif"
+        matplotlib.rcParams["font.sans-serif"] = [_mpl_font, "DejaVu Sans", "Arial"]
+        _MPL_FONT_SET = True
+        break
+    except Exception:
+        pass
+matplotlib.rcParams["axes.unicode_minus"] = False
+
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -68,38 +80,83 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
 # ── Türkçe font kaydı ──────────────────────────────────────────────────────
+
+def _font_bul(isim: str, dosya_adi: str) -> str | None:
+    """Font dosyasını proje klasöründe ve sistem yollarında arar."""
+    # 1. Proje klasörü
+    if os.path.exists(dosya_adi):
+        return dosya_adi
+
+    # 2. Sistem font yolları (Linux / macOS / Windows)
+    sistem_yollar = [
+        # Linux (Ubuntu, Debian, GitHub Actions)
+        f"/usr/share/fonts/truetype/dejavu/{dosya_adi}",
+        f"/usr/share/fonts/TTF/{dosya_adi}",
+        f"/usr/share/fonts/{dosya_adi}",
+        f"/usr/local/share/fonts/{dosya_adi}",
+        # macOS
+        f"/Library/Fonts/{dosya_adi}",
+        f"/System/Library/Fonts/Supplemental/{dosya_adi}",
+        os.path.expanduser(f"~/Library/Fonts/{dosya_adi}"),
+        # Windows
+        f"C:\\Windows\\Fonts\\{dosya_adi}",
+    ]
+    for yol in sistem_yollar:
+        if os.path.exists(yol):
+            return yol
+
+    # 3. reportlab paketi içindeki fontlar
+    try:
+        import reportlab
+        rl_font = os.path.join(os.path.dirname(reportlab.__file__), "fonts", dosya_adi)
+        if os.path.exists(rl_font):
+            return rl_font
+    except Exception:
+        pass
+
+    return None
+
+
 def _fontlari_kaydet():
     """
-    DejaVu fontları proje klasöründe varsa kaydeder.
-    Yoksa font_kur.py çalıştırılması gerektiğini uyarır.
-    Fontlar bulunamazsa Helvetica'ya geri döner (bozuk karakterler olabilir).
+    DejaVu fontlarını proje klasöründe, sistem fontlarında veya reportlab içinde arar.
+    Bulunamazsa Helvetica'ya geri döner.
     """
-    font_dosyalari = {
+    font_harita = {
         "DejaVuSans":          "DejaVuSans.ttf",
         "DejaVuSans-Bold":     "DejaVuSans-Bold.ttf",
         "DejaVuSans-Oblique":  "DejaVuSans-Oblique.ttf",
     }
-    tumu_var = all(os.path.exists(p) for p in font_dosyalari.values())
-    if tumu_var:
-        for isim, dosya in font_dosyalari.items():
+
+    bulunanlar = {}
+    for isim, dosya in font_harita.items():
+        yol = _font_bul(isim, dosya)
+        if yol:
+            bulunanlar[isim] = yol
+
+    if len(bulunanlar) >= 2:  # En az normal + bold
+        for isim, yol in bulunanlar.items():
             try:
-                pdfmetrics.registerFont(TTFont(isim, dosya))
-            except Exception:
-                pass
-        # ReportLab'e alias ekle — Helvetica yerine DejaVu kullan
+                pdfmetrics.registerFont(TTFont(isim, yol))
+                print(f"  ✅ Font kaydedildi: {isim} ← {yol}")
+            except Exception as e:
+                print(f"  ⚠ Font kayıt hatası ({isim}): {e}")
+
         from reportlab.pdfbase.pdfmetrics import registerFontFamily
         registerFontFamily(
             "DejaVuSans",
             normal="DejaVuSans",
-            bold="DejaVuSans-Bold",
-            italic="DejaVuSans-Oblique",
-            boldItalic="DejaVuSans-Bold",
+            bold=bulunanlar.get("DejaVuSans-Bold", "DejaVuSans"),
+            italic=bulunanlar.get("DejaVuSans-Oblique", "DejaVuSans"),
+            boldItalic=bulunanlar.get("DejaVuSans-Bold", "DejaVuSans"),
         )
-        return "DejaVuSans", "DejaVuSans-Bold"
+        return "DejaVuSans", bulunanlar.get("DejaVuSans-Bold", "DejaVuSans")
     else:
-        print("⚠ DejaVu fontları bulunamadı. Türkçe karakterler bozuk çıkabilir.")
+        print("⚠ DejaVu fontları bulunamadı. Türkçe/Rusça karakterler bozuk çıkabilir.")
         print("  Düzeltmek için:  python3 font_kur.py")
+        print("  Veya:  sudo apt install fonts-dejavu-core  (Linux)")
         return "Helvetica", "Helvetica-Bold"
+
 
 _FONT_NORMAL, _FONT_BOLD = _fontlari_kaydet()
 # ────────────────────────────────────────────────────────────────────────────
