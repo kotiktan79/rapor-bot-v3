@@ -1,0 +1,51 @@
+name: Telegram Bot Dinleyici
+
+on:
+  # Manuel tetikleme — GitHub'dan "Run workflow" ile başlat
+  workflow_dispatch:
+    inputs:
+      sure_dakika:
+        description: 'Kaç dakika dinlesin (max 30)'
+        required: false
+        default: '5'
+
+concurrency:
+  group: telegram-bot
+  cancel-in-progress: true
+
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python kurulumu
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Bağımlılıkları yükle
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Sistem fontlarını kur
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-dejavu-core fonts-dejavu-extra
+
+      - name: Telegram bot dinle
+        env:
+          GMAIL_USER:     ${{ secrets.GMAIL_USER }}
+          GMAIL_PASS:     ${{ secrets.GMAIL_PASS }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT:  ${{ secrets.TELEGRAM_CHAT }}
+        run: |
+          SURE=${{ github.event.inputs.sure_dakika || '5' }}
+          echo "🤖 Bot $SURE dakika dinleyecek..."
+          timeout ${SURE}m python telegram_bot.py || true
+          echo "✅ Bot durduruldu."
