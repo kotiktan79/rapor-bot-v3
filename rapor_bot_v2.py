@@ -181,7 +181,7 @@ GONDERICILER = [
 ]
 
 # E-posta tarama: kaç gün geriye baksın
-MAIL_LOOKBACK_GUN = 2
+MAIL_LOOKBACK_GUN = 3
 
 # Desteklenen dosya uzantıları
 DESTEKLENEN_UZANTILAR = [".xlsx", ".xls", ".csv"]
@@ -3098,9 +3098,13 @@ def maillerden_ekleri_indir() -> list:
 def verileri_isle(dosyalar: list, dun_ali: str, dun_ruslan: str):
     sehir_df = santiye_df = pd.DataFrame()
     dun_dt = datetime.now() - timedelta(1)
+    # Dün + önceki 2 gün de dene (dosya gecikmiş olabilir)
     tum_tarih_strler = _tarih_formatla(dun_dt)
+    for geri in range(2, 4):
+        tum_tarih_strler += _tarih_formatla(datetime.now() - timedelta(geri))
     islem_ozeti = {"sehir_denenen": 0, "sehir_basarili": False,
-                   "santiye_denenen": 0, "santiye_basarili": False}
+                   "santiye_denenen": 0, "santiye_basarili": False,
+                   "eslesen_tarih": ""}
 
     # ── Şehir Servisleri ──────────────────────────
     sehir_dosyalar = [f for f in dosyalar if _dosya_pattern_eslesir(f, SEHIR_DOSYA_PATTERN)]
@@ -3188,27 +3192,33 @@ def verileri_isle(dosyalar: list, dun_ali: str, dun_ruslan: str):
                 log.warning(f"  ⚠ Şantiye CSV hatası ({dosya}): {e}")
             continue
 
-        # Excel: sayfa adı şablonlarını dene
+        # Excel: sayfa adı şablonlarını dene (dün + önceki 2 gün)
         sayfa_bulundu = False
-        for sablon in SANTIYE_SAYFA_SABLONLARI:
-            sayfa_adi = sablon.format(tarih=dun_ruslan)
-            try:
-                df = _dosya_oku(dosya, sayfa=sayfa_adi, header=1)
-                df.columns = df.columns.str.strip()
-                df = _sutun_eslestir(df, SANTIYE_SUTUN_ALIAS)
-                santiye_df = df.groupby("организация").agg(
-                    Toplam_Sefer=("Гос-Номер", "count"),
-                    Farkli_Otobus=("Гос-Номер", "nunique"),
-                    Toplam_Kapasite=("Кол-во мест", "sum"),
-                    Toplam_Yolcu=("кол-во поссажиров", "sum"),
-                ).reset_index()
-                santiye_df["Ek_Sefer"] = santiye_df["Toplam_Sefer"] - santiye_df["Farkli_Otobus"]
-                islem_ozeti["santiye_basarili"] = True
-                sayfa_bulundu = True
-                log.info(f"✅ Şantiye verisi: {dosya} / '{sayfa_adi}' ({len(santiye_df)} firma)")
+        tarih_denemeleri = [dun_ruslan]
+        for geri in range(2, 4):
+            tarih_denemeleri.append((datetime.now() - timedelta(geri)).strftime("%d.%m.%Y"))
+        for tarih_d in tarih_denemeleri:
+            if sayfa_bulundu:
                 break
-            except Exception as e:
-                log.debug(f"  ⏭ '{sayfa_adi}' denemesi başarısız: {e}")
+            for sablon in SANTIYE_SAYFA_SABLONLARI:
+                sayfa_adi = sablon.format(tarih=tarih_d)
+                try:
+                    df = _dosya_oku(dosya, sayfa=sayfa_adi, header=1)
+                    df.columns = df.columns.str.strip()
+                    df = _sutun_eslestir(df, SANTIYE_SUTUN_ALIAS)
+                    santiye_df = df.groupby("организация").agg(
+                        Toplam_Sefer=("Гос-Номер", "count"),
+                        Farkli_Otobus=("Гос-Номер", "nunique"),
+                        Toplam_Kapasite=("Кол-во мест", "sum"),
+                        Toplam_Yolcu=("кол-во поссажиров", "sum"),
+                    ).reset_index()
+                    santiye_df["Ek_Sefer"] = santiye_df["Toplam_Sefer"] - santiye_df["Farkli_Otobus"]
+                    islem_ozeti["santiye_basarili"] = True
+                    sayfa_bulundu = True
+                    log.info(f"✅ Şantiye verisi: {dosya} / '{sayfa_adi}' ({len(santiye_df)} firma)")
+                    break
+                except Exception as e:
+                    log.debug(f"  ⏭ '{sayfa_adi}' denemesi başarısız: {e}")
 
         if sayfa_bulundu:
             break
