@@ -3,7 +3,7 @@ name: Ulaşım Rapor Botu
 on:
   # Zamanlanmış çalıştırma (UTC saatleri — Türkiye = UTC+3)
   schedule:
-    - cron: '0 5 * * *'    # Her gün 08:00 TR (05:00 UTC)
+    - cron: '0 2 * * *'    # Her gün 05:00 TR (02:00 UTC)
     - cron: '0 15 * * *'   # Her gün 18:00 TR (15:00 UTC)
 
   # Manuel tetikleme (GitHub arayüzünden "Run workflow" butonu)
