@@ -463,10 +463,7 @@ def bildirim_kaydet(tarih: str, tip: str, seviye: str, mesaj: str,
 
     if gonder and BILDIRIM_AKTIF:
         emo = {"kritik": "🚨", "uyari": "⚠️", "bilgi": "ℹ️"}.get(seviye, "📢")
-        tg = f"{emo} *ANLIK BİLDİRİM*\n"
-        tg += f"_{seviye.upper()} — {tip}_\n"
-        tg += f"━━━━━━━━━━━━━━━━━━━━━\n"
-        tg += mesaj
+        tg = f"{emo} <b>BİLDİRİM</b>  <i>{seviye.upper()}</i>\n\n{mesaj}"
         return telegram_mesaj_gonder(tg)
     return False
 
@@ -496,13 +493,13 @@ def esik_kontrolu(tarih_str: str, gecmis: dict,
         tip = "doluluk_kritik"
         if _bildirim_cooldown_kontrol(tip):
             bildirim_kaydet(tarih_str, tip, "kritik",
-                f"Genel doluluk *%{g_dol:.1f}* — kritik eşik (%{esikler['doluluk_kritik']}) altında!\n"
+                f"Genel doluluk <b>%{g_dol:.1f}</b> — kritik eşik (%{esikler['doluluk_kritik']}) altında!\n"
                 f"Yolcu: {g_yolcu:,} / Kapasite: {g_kap:,}")
     elif g_dol < esikler["doluluk_dusuk"]:
         tip = "doluluk_dusuk"
         if _bildirim_cooldown_kontrol(tip):
             bildirim_kaydet(tarih_str, tip, "uyari",
-                f"Genel doluluk *%{g_dol:.1f}* — düşük eşik (%{esikler['doluluk_dusuk']}) altında.\n"
+                f"Genel doluluk <b>%{g_dol:.1f}</b> — düşük eşik (%{esikler['doluluk_dusuk']}) altında.\n"
                 f"Yolcu: {g_yolcu:,} / Kapasite: {g_kap:,}")
 
     # 2. Firma bazlı kontrol
@@ -521,14 +518,14 @@ def esik_kontrolu(tarih_str: str, gecmis: dict,
                 tip = f"arac_min_{firma}"
                 if _bildirim_cooldown_kontrol(tip):
                     bildirim_kaydet(tarih_str, tip, "uyari",
-                        f"*{firma}* [{df_name}]: Sadece *{arac} araç* aktif "
+                        f"<b>{firma}</b> [{df_name}]: Sadece <b>{arac} araç</b> aktif "
                         f"(minimum: {esikler['arac_min']})")
 
             if dol < esikler["doluluk_kritik"]:
                 tip = f"firma_kritik_{firma}"
                 if _bildirim_cooldown_kontrol(tip):
                     bildirim_kaydet(tarih_str, tip, "kritik",
-                        f"*{firma}* [{df_name}]: Doluluk *%{dol:.1f}* — kritik seviye!")
+                        f"<b>{firma}</b> [{df_name}]: Doluluk <b>%{dol:.1f}</b> — kritik seviye!")
 
     # 3. Ani düşüş kontrolü (önceki güne göre)
     if len(gecmis) >= 2:
@@ -540,7 +537,7 @@ def esik_kontrolu(tarih_str: str, gecmis: dict,
                 tip = "yolcu_ani_dusus"
                 if _bildirim_cooldown_kontrol(tip):
                     bildirim_kaydet(tarih_str, tip, "kritik",
-                        f"Yolcu sayısında ani düşüş: *%{dusus:.0f}*\n"
+                        f"Yolcu sayısında ani düşüş: <b>%{dusus:.0f}</b>\n"
                         f"Dün: {onceki['yolcu']:,} → Bugün: {g_yolcu:,}\n"
                         f"Fark: {onceki['yolcu'] - g_yolcu:,} yolcu")
 
@@ -1312,54 +1309,38 @@ def grafik_ml_firma_onerisi(oneriler: list[dict]) -> bytes:
 
 def telegram_ml_mesaj(tahmin: dict | None, oneriler: list[dict],
                       anomaliler: list[dict] | None = None) -> str:
-    satir = "━━━━━━━━━━━━━━━━━━━━━\n"
-    m = f"🤖 *MAKİNE ÖĞRENMESİ ANALİZİ*\n{satir}"
+    m = "<b>ML ANALİZ</b>\n\n"
 
-    # Haftalık doluluk tahmini
+    # Tahmin
     if tahmin:
-        model_adi = tahmin.get("model_adi", "Ridge")
-        model_detay = tahmin.get("model_detay", "")
-        m += f"📈 *7 GÜNLÜK DOLULUK TAHMİNİ*\n"
-        m += f"_Model: {model_adi} | Güven: {tahmin['guven']} | ±{tahmin['model_hata']:.1f}% hata_\n"
-        if model_detay:
-            m += f"_Detay: {model_detay[:60]}_\n"
-        m += "\n"
+        model = tahmin.get("model_adi", "Ridge")
+        m += f"<b>7 Günlük Tahmin</b>  <i>({model}, ±{tahmin['model_hata']:.1f}%)</i>\n"
         for tarih, dol in tahmin["tahminler"]:
-            dt    = datetime.strptime(tarih, "%Y-%m-%d")
-            gun   = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"][dt.weekday()]
-            emo   = "🟢" if dol >= 80 else "🟡" if dol >= 60 else "🔴"
-            m += f"{emo} `{dt.strftime('%d.%m')} {gun}` → *%{dol:.1f}*\n"
-        m += satir
+            dt = datetime.strptime(tarih, "%Y-%m-%d")
+            gun = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"][dt.weekday()]
+            emo = "🟢" if dol >= 80 else "🟡" if dol >= 60 else "🔴"
+            m += f"{emo} {dt.strftime('%d.%m')} {gun}  <b>%{dol:.0f}</b>\n"
+        m += "\n"
     else:
-        m += f"⏳ _Tahmin için en az {ML_MIN_GUN} günlük veri gerekiyor._\n{satir}"
+        m += f"<i>Tahmin için en az {ML_MIN_GUN} gün veri gerekiyor.</i>\n\n"
 
-    # Anomali tespiti
+    # Anomali
     if anomaliler:
-        m += f"🔍 *ANOMALİ TESPİTİ*  ({len(anomaliler)} anomali)\n"
-        for a in anomaliler[:8]:  # En fazla 8 anomali göster
-            m += f"⚠️ `{a['tarih'][5:]}` *{a['metrik']}*: {a['deger']}\n"
-            m += f"   _{a['yontem']}: {a['aciklama'][:50]}_\n"
-        if len(anomaliler) > 8:
-            m += f"   _...ve {len(anomaliler) - 8} anomali daha (PDF'te)_\n"
-        m += satir
+        m += f"<b>Anomali</b>  ({len(anomaliler)} tespit)\n"
+        for a in anomaliler[:5]:
+            m += f"⚠️ {a['tarih'][5:]}  {a['metrik']}  <b>{a['deger']}</b>\n"
+        m += "\n"
     elif ANOMALI_AKTIF:
-        m += "✅ _Anomali tespit edilmedi — tüm metrikler normal aralıkta._\n"
-        m += satir
+        m += "✅ Anomali yok\n\n"
 
-    # Kapasite önerileri
+    # Kapasite
     if oneriler:
-        m += f"🔧 *KAPASİTE ÖNERİLERİ*  ({len(oneriler)} firma)\n"
-        for o in oneriler:
+        m += f"<b>Kapasite Önerisi</b>  ({len(oneriler)} firma)\n"
+        for o in oneriler[:5]:
             delta = o["delta_arac"]
-            emo   = "📉" if delta < 0 else "📈" if delta > 0 else "➡️"
-            m += f"\n{emo} *{o['firma']}* [{o['kategori']}]\n"
-            m += f"   Doluluk: %{o['mevcut_dol']:.1f} (hedef: %{o['hedef_dol']:.1f})\n"
-            m += f"   💡 {o['onerim']}\n"
-        m += satir
-    else:
-        m += "✅ _Tüm firmalar hedef doluluk oranında, kapasite önerisi yok._\n"
+            emo = "📉" if delta < 0 else "📈" if delta > 0 else "·"
+            m += f"{emo} {o['firma']}  %{o['mevcut_dol']:.0f} → %{o['hedef_dol']:.0f}\n"
 
-    m += "_📊 Grafik ve detaylar aşağıda gönderilecektir._"
     return m
 
 
@@ -1628,9 +1609,10 @@ def _tg_post(endpoint: str, **kwargs) -> bool:
     return False
 
 
-def telegram_mesaj_gonder(mesaj: str) -> bool:
+def telegram_mesaj_gonder(mesaj: str, html: bool = True) -> bool:
     return _tg_post("sendMessage", json={
-        "chat_id": TELEGRAM_CHAT, "text": mesaj, "parse_mode": "Markdown"
+        "chat_id": TELEGRAM_CHAT, "text": mesaj,
+        "parse_mode": "HTML" if html else "Markdown",
     })
 
 
@@ -2394,112 +2376,89 @@ def telegram_gunluk_mesaj(tarih_str: str, sehir_df: pd.DataFrame,
                            santiye_df: pd.DataFrame, uyarilar: list[dict],
                            gecmis: dict) -> str:
     en_iyi, en_kotu = en_iyi_en_kotu(sehir_df, santiye_df)
-    satir = "━━━━━━━━━━━━━━━━━━━━━\n"
 
-    m  = f"🚌 *GÜNLÜK ULAŞIM RAPORU*\n"
-    m += f"📅 _{tarih_str}_\n"
-    m += satir
+    m = f"<b>GÜNLÜK ULAŞIM RAPORU</b>\n"
+    m += f"<i>{tarih_str}</i>\n\n"
 
-    # ── KPI Özeti ──
+    # KPI
     tum_dfs = [df for df in [sehir_df, santiye_df] if not df.empty]
     if tum_dfs:
-        tum     = pd.concat(tum_dfs)
-        g_arac  = int(tum["Farkli_Otobus"].sum())
+        tum = pd.concat(tum_dfs)
+        g_arac = int(tum["Farkli_Otobus"].sum())
         g_sefer = int(tum["Toplam_Sefer"].sum())
-        g_kap   = int(tum["Toplam_Kapasite"].sum())
+        g_kap = int(tum["Toplam_Kapasite"].sum())
         g_yolcu = int(tum["Toplam_Yolcu"].sum())
-        g_dol   = g_yolcu / g_kap * 100 if g_kap > 0 else 0
+        g_dol = g_yolcu / g_kap * 100 if g_kap > 0 else 0
         dol_emo = "🟢" if g_dol >= 80 else "🟡" if g_dol >= 60 else "🔴"
 
-        m += f"📊 *OPERASYON ÖZETİ*\n"
-        m += f"🚍 `{g_arac} araç  |  {g_sefer} sefer`\n"
-        m += f"👥 `{g_yolcu:,} yolcu / {g_kap:,} koltuk`\n"
-        m += f"{dol_emo} `Genel doluluk: %{g_dol:.1f}`\n"
-        m += satir
+        m += f"{dol_emo} Doluluk  <b>%{g_dol:.1f}</b>\n"
+        m += f"🚍 {g_arac} araç  ·  {g_sefer} sefer\n"
+        m += f"👥 {g_yolcu:,} / {g_kap:,} koltuk\n\n"
 
-    # ── Şehir Servisleri ──
+    # Firmalar — tek tablo
+    def _firma_satir(df, col):
+        lines = []
+        for _, row in df.iterrows():
+            kap = int(row["Toplam_Kapasite"])
+            yolcu = int(row["Toplam_Yolcu"])
+            dol = yolcu / kap * 100 if kap > 0 else 0
+            emo = "🟢" if dol >= 80 else "🟡" if dol >= 60 else "🔴"
+            lines.append(f"{emo} {str(row[col])[:20]}  <b>%{dol:.0f}</b>  {int(row['Farkli_Otobus'])}araç  {yolcu:,}yolcu")
+        return lines
+
     if not sehir_df.empty:
-        m += "🏙️ *ŞEHİR SERVİSLERİ*\n"
-        for _, row in sehir_df.iterrows():
-            kap     = int(row["Toplam_Kapasite"])
-            yolcu   = int(row["Toplam_Yolcu"])
-            dol     = yolcu / kap * 100 if kap > 0 else 0
-            emo     = "🟢" if dol >= 80 else "🟡" if dol >= 60 else "🔴"
-            firma   = str(row["OTOBUS FIRMASI"])[:22]
-            m += f"{emo} *{firma}*\n"
-            m += f"   🚍 {int(row['Farkli_Otobus'])} araç  •  {int(row['Toplam_Sefer'])} sefer  •  %{dol:.1f}\n"
-        m += satir
+        m += "<b>Şehir</b>\n"
+        m += "\n".join(_firma_satir(sehir_df, "OTOBUS FIRMASI")) + "\n\n"
 
-    # ── Şantiye Servisleri ──
     if not santiye_df.empty:
-        m += "🏗️ *ŞANTİYE SERVİSLERİ*\n"
-        for _, row in santiye_df.iterrows():
-            kap     = int(row["Toplam_Kapasite"])
-            yolcu   = int(row["Toplam_Yolcu"])
-            dol     = yolcu / kap * 100 if kap > 0 else 0
-            emo     = "🟢" if dol >= 80 else "🟡" if dol >= 60 else "🔴"
-            firma   = str(row["организация"])[:22]
-            m += f"{emo} *{firma}*\n"
-            m += f"   🚍 {int(row['Farkli_Otobus'])} araç  •  {int(row['Toplam_Sefer'])} sefer  •  %{dol:.1f}\n"
-        m += satir
+        m += "<b>Şantiye</b>\n"
+        m += "\n".join(_firma_satir(santiye_df, "организация")) + "\n\n"
 
-    # ── En iyi / En kötü ──
+    # Performans
     if en_iyi is not None and en_kotu is not None:
-        m += "🏆 *PERFORMANS*\n"
-        m += f"🥇 En iyi: *{str(en_iyi['Firma'])[:20]}*  (%{en_iyi['Doluluk']:.1f})\n"
-        m += f"⚠️ En düşük: *{str(en_kotu['Firma'])[:20]}*  (%{en_kotu['Doluluk']:.1f})\n"
-        m += satir
+        m += f"🥇 {str(en_iyi['Firma'])[:18]}  %{en_iyi['Doluluk']:.0f}\n"
+        m += f"🔻 {str(en_kotu['Firma'])[:18]}  %{en_kotu['Doluluk']:.0f}\n\n"
 
-    # ── Uyarılar ──
+    # Uyarılar
     kirmizi = [u for u in uyarilar if u["tip"] == "kirmizi"]
-    sarı    = [u for u in uyarilar if u["tip"] == "sari"]
-    if uyarilar:
-        m += f"🚨 *UYARILAR  ({len(kirmizi)} kritik / {len(sarı)} dikkat)*\n"
-        for u in kirmizi:
-            m += f"🔴 [{u['kategori']}] *{u['firma']}*: {u['mesaj']}\n"
-        for u in sarı:
-            m += f"🟡 [{u['kategori']}] *{u['firma']}*: {u['mesaj']}\n"
-        m += satir
+    if kirmizi:
+        m += f"🚨 <b>{len(kirmizi)} kritik uyarı</b>\n"
+        for u in kirmizi[:3]:
+            m += f"  · {u['firma']}: {u['mesaj']}\n"
+        m += "\n"
 
-    # ── Haftalık trend kısa özeti ──
+    # Trend
     if len(gecmis) >= 2:
         tarihler = list(gecmis.keys())
-        onceki   = gecmis[tarihler[-2]]["doluluk"]
-        bugun    = gecmis[tarihler[-1]]["doluluk"]
-        fark     = bugun - onceki
-        ok       = "📈" if fark > 0 else "📉" if fark < 0 else "➡️"
-        m += f"{ok} Dünkü fark: `{'+' if fark >= 0 else ''}{fark:.1f}%`\n"
+        fark = gecmis[tarihler[-1]]["doluluk"] - gecmis[tarihler[-2]]["doluluk"]
+        ok = "📈" if fark > 0 else "📉" if fark < 0 else "➡️"
+        m += f"{ok} Önceki güne göre <b>{'+' if fark >= 0 else ''}{fark:.1f}%</b>"
 
-    m += "\n📄 _Detaylı PDF ve grafikler aşağıda gönderilecektir._"
     return m
 
 
 def telegram_haftalik_mesaj(gecmis: dict) -> str:
-    tarihler   = list(gecmis.keys())
-    hafta_dol  = [v["doluluk"] for v in gecmis.values()]
-    hafta_arac = [v["arac"]    for v in gecmis.values()]
-    hafta_yol  = [v["yolcu"]   for v in gecmis.values()]
+    tarihler = list(gecmis.keys())
+    dol = [v["doluluk"] for v in gecmis.values()]
+    arac = [v["arac"] for v in gecmis.values()]
+    yol = [v["yolcu"] for v in gecmis.values()]
 
-    ort_dol   = sum(hafta_dol)  / len(hafta_dol)
-    ort_arac  = sum(hafta_arac) / len(hafta_arac)
-    top_yolcu = sum(hafta_yol)
-
-    en_y_gun  = tarihler[hafta_dol.index(max(hafta_dol))]
-    en_d_gun  = tarihler[hafta_dol.index(min(hafta_dol))]
-
+    ort_dol = sum(dol) / len(dol)
     dol_emo = "🟢" if ort_dol >= 80 else "🟡" if ort_dol >= 60 else "🔴"
 
-    m  = "📅 *HAFTALIK ÖZET RAPORU*\n"
-    m += f"🗓️ _{tarihler[0]}  →  {tarihler[-1]}_\n"
-    m += "━━━━━━━━━━━━━━━━━━━━━\n"
-    m += f"{dol_emo} *Ortalama Doluluk:* %{ort_dol:.1f}\n"
-    m += f"🚍 *Ortalama Araç:* {ort_arac:.1f} araç/gün\n"
-    m += f"👥 *Toplam Yolcu:* {top_yolcu:,} kişi\n"
-    m += "━━━━━━━━━━━━━━━━━━━━━\n"
-    m += f"🏆 En verimli gün: *{en_y_gun}*  (%{max(hafta_dol):.1f})\n"
-    m += f"⚠️ En düşük gün: *{en_d_gun}*  (%{min(hafta_dol):.1f})\n"
-    m += "━━━━━━━━━━━━━━━━━━━━━\n"
-    m += "\n📄 _Haftalık PDF raporu aşağıda gönderilecektir._"
+    m = f"<b>HAFTALIK ÖZET</b>\n"
+    m += f"<i>{tarihler[0]} → {tarihler[-1]}</i>\n\n"
+    m += f"{dol_emo} Ort. doluluk  <b>%{ort_dol:.1f}</b>\n"
+    m += f"🚍 Ort. araç  <b>{sum(arac)/len(arac):.0f}</b>/gün\n"
+    m += f"👥 Toplam  <b>{sum(yol):,}</b> yolcu\n\n"
+
+    # Mini trend
+    for t, d in zip(tarihler, dol):
+        emo = "🟢" if d >= 80 else "🟡" if d >= 60 else "🔴"
+        m += f"{emo} {t[5:]}  <b>%{d:.0f}</b>\n"
+
+    m += f"\n🏆 En iyi  {tarihler[dol.index(max(dol))][5:]}  %{max(dol):.0f}\n"
+    m += f"🔻 En düşük  {tarihler[dol.index(min(dol))][5:]}  %{min(dol):.0f}"
     return m
 
 
@@ -2671,33 +2630,16 @@ def _verimlilik_pdf_tablo(verimlilik: list[dict]) -> Table | None:
 
 def telegram_firma_mesaj(verimlilik: list[dict], firma_gecmis: dict) -> str:
     """Firma bazlı Telegram mesajı."""
-    satir = "━━━━━━━━━━━━━━━━━━━━━\n"
-    m = f"🏢 *FİRMA DETAY RAPORU*\n{satir}"
-
     if not verimlilik:
-        m += "ℹ Firma verisi bulunmuyor.\n"
-        return m
+        return "<i>Firma verisi bulunamadı.</i>"
 
-    m += f"📊 *VERİMLİLİK SIRALAMASI*  ({len(verimlilik)} firma)\n\n"
-    for i, v in enumerate(verimlilik[:10], 1):
+    m = "<b>FİRMA VERİMLİLİK</b>\n\n"
+    for i, v in enumerate(verimlilik[:8], 1):
         emo = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
-        skor_emo = "🟢" if v["verimlilik"] >= 70 else "🟡" if v["verimlilik"] >= 50 else "🔴"
-        m += f"{emo} {skor_emo} *{v['firma']}* [{v['kategori']}]\n"
-        m += (f"   Skor: *{v['verimlilik']:.0f}* | "
-              f"%{v['doluluk']:.1f} dol. | "
-              f"{v['sefer_per_arac']:.1f} sef/araç | "
-              f"{v['bos_koltuk']} boş koltuk\n")
-    m += satir
+        s = "🟢" if v["verimlilik"] >= 70 else "🟡" if v["verimlilik"] >= 50 else "🔴"
+        m += f"{emo}{s} {v['firma']}\n"
+        m += f"    Skor <b>{v['verimlilik']:.0f}</b>  %{v['doluluk']:.0f}  {v['bos_koltuk']} boş\n"
 
-    # Firma trend kısa özet
-    firma_sayilari = {}
-    for tarih, firmalar in sorted(firma_gecmis.items()):
-        firma_sayilari[tarih] = len(firmalar)
-    if len(firma_sayilari) >= 2:
-        tarihler = list(firma_sayilari.keys())
-        m += f"📅 _Takip edilen dönem: {tarihler[0]} → {tarihler[-1]}_\n"
-
-    m += "\n📄 _Firma detay PDF'i aşağıda gönderilecektir._"
     return m
 
 
@@ -2885,64 +2827,40 @@ def telegram_aylik_mesaj(aylik_gecmis: dict, ay_adi: str,
                           firma_gecmis: dict = None) -> str:
     """Aylık özet Telegram mesajı."""
     if not aylik_gecmis:
-        return f"📅 *AYLIK ÖZET — {ay_adi}*\n⚠ Veri bulunamadı."
+        return f"<b>AYLIK ÖZET — {ay_adi}</b>\n<i>Veri bulunamadı.</i>"
 
-    satir = "━━━━━━━━━━━━━━━━━━━━━\n"
     tarihler = list(aylik_gecmis.keys())
     dol = [v["doluluk"] for v in aylik_gecmis.values()]
-    arac = [v["arac"] for v in aylik_gecmis.values()]
     yolcu = [v["yolcu"] for v in aylik_gecmis.values()]
     kap = [v["kapasite"] for v in aylik_gecmis.values()]
+    arac = [v["arac"] for v in aylik_gecmis.values()]
 
     ort_dol = sum(dol) / len(dol)
     top_yolcu = sum(yolcu)
     top_kap = sum(kap)
-    ort_arac = sum(arac) / len(arac)
-    bos_koltuk = top_kap - top_yolcu
+    bos = top_kap - top_yolcu
     dol_emo = "🟢" if ort_dol >= 80 else "🟡" if ort_dol >= 60 else "🔴"
 
-    m = f"📅 *AYLIK ÖZET RAPORU — {ay_adi}*\n"
-    m += f"🗓️ _{tarihler[0]} → {tarihler[-1]}_\n"
-    m += satir
+    m = f"<b>AYLIK ÖZET — {ay_adi}</b>\n"
+    m += f"<i>{tarihler[0]} → {tarihler[-1]}  ({len(tarihler)} gün)</i>\n\n"
 
-    m += f"{dol_emo} *Ortalama Doluluk:* %{ort_dol:.1f}\n"
-    m += f"🚍 *Ort. Araç/Gün:* {ort_arac:.1f}\n"
-    m += f"👥 *Toplam Yolcu:* {top_yolcu:,}\n"
-    m += f"💺 *Toplam Kapasite:* {top_kap:,}\n"
-    m += f"🪑 *Boş Koltuk:* {bos_koltuk:,} ({bos_koltuk/top_kap*100:.1f}%)\n"
-    m += f"📊 *Raporlanan Gün:* {len(tarihler)}\n"
-    m += satir
+    m += f"{dol_emo} Ort. doluluk  <b>%{ort_dol:.0f}</b>\n"
+    m += f"👥 Toplam yolcu  <b>{top_yolcu:,}</b>\n"
+    m += f"🚍 Ort. araç  <b>{sum(arac)/len(arac):.0f}</b>/gün\n"
+    m += f"🪑 Boş koltuk  <b>{bos:,}</b>  (%{bos/top_kap*100:.0f})\n\n"
 
-    m += f"🏆 *En İyi Gün:* {tarihler[dol.index(max(dol))]}  (%{max(dol):.1f})\n"
-    m += f"⚠️ *En Kötü Gün:* {tarihler[dol.index(min(dol))]}  (%{min(dol):.1f})\n"
-    m += f"📈 *En Yüksek Yolcu:* {max(yolcu):,} ({tarihler[yolcu.index(max(yolcu))]})\n"
-    m += satir
+    m += f"🏆 En iyi  {tarihler[dol.index(max(dol))][5:]}  %{max(dol):.0f}\n"
+    m += f"🔻 En düşük  {tarihler[dol.index(min(dol))][5:]}  %{min(dol):.0f}\n\n"
 
-    # Haftalık ortalamalar
-    m += "📊 *HAFTALIK ORTALAMALAR*\n"
+    # Haftalık
+    m += "<b>Haftalık</b>\n"
     for i in range(0, len(dol), 7):
         dilim = dol[i:i + 7]
         if dilim:
             ort = sum(dilim) / len(dilim)
             emo = "🟢" if ort >= 80 else "🟡" if ort >= 60 else "🔴"
-            m += f"{emo} Hafta {i//7+1}: %{ort:.1f} ({len(dilim)} gün)\n"
-    m += satir
+            m += f"{emo} H{i//7+1}  <b>%{ort:.0f}</b>  ({len(dilim)} gün)\n"
 
-    # En iyi/kötü firmalar (firma geçmişinden)
-    if firma_gecmis:
-        son_tarih = sorted(firma_gecmis.keys())[-1] if firma_gecmis else None
-        if son_tarih and son_tarih in firma_gecmis:
-            firmalar = firma_gecmis[son_tarih]
-            if firmalar:
-                firma_dol = [(f, v.get("doluluk", 0)) for f, v in firmalar.items()]
-                firma_dol.sort(key=lambda x: x[1], reverse=True)
-                m += "🏢 *FİRMA PERFORMANSI (son gün)*\n"
-                for f, d in firma_dol[:5]:
-                    emo = "🟢" if d >= 80 else "🟡" if d >= 60 else "🔴"
-                    m += f"{emo} {f[:20]}: %{d:.1f}\n"
-                m += satir
-
-    m += "\n📄 _Aylık PDF raporu aşağıda gönderilecektir._"
     return m
 
 
@@ -3503,12 +3421,10 @@ def raporu_hazirla_ve_gonder():
         # Hata bildirimini Telegram'a gönder
         try:
             telegram_mesaj_gonder(
-                f"🚨 *RAPOR HATASI*\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"🚨 <b>RAPOR HATASI</b>\n\n"
                 f"Tarih: {tarih_str}\n"
-                f"Hata: `{hata_mesaj[:200]}`\n"
-                f"Süre: {sure:.1f}s\n"
-                f"_Loglara bakın: rapor\\_bot.log_"
+                f"Hata: <code>{hata_mesaj[:200]}</code>\n"
+                f"Süre: {sure:.1f}s"
             )
         except Exception:
             pass
